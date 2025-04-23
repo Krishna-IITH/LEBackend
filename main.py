@@ -15,16 +15,16 @@ class Task(BaseModel):
 def dashboard():
     return {'status':200, 'data': 'Dashboard'}
 
-@app.get('/tasks')
-def tasks_list(limit=10):
-    return {'status':200, 'data': f'{limit} Tasks List'}
+# @app.get('/tasks')
+# def tasks_list(limit=10):
+#     return {'status':200, 'data': f'{limit} Tasks List'}
 
-@app.get('/task/{id}')
-def task_detail(id):
-    return {'status': 200, 'data': id}
+# @app.get('/task/{id}')
+# def task_detail(id):
+#     return {'status': 200, 'data': id}
 
-@app.post('/task')
-def task_create(request: Task):
-    return request
+# @app.post('/task')
+# def task_create(request: Task):
+#     return request
     # return {'status': 200, 'data': 'Task created sucessfully'}
 
