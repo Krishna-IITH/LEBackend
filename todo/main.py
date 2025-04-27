@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from . import models
 from .database import engine
 from .routers import user, task, authentication, explainer
+from .schemas import Token
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -150,18 +151,26 @@ async def generate_talking_video(text: str = "hello! how are you? i am your new 
     return FileResponse(output_video_path, media_type="video/mp4", filename="talking_video.mp4")
 
 
-@app.get("/auth")
-def authentication(request: Request,token:str):
+@app.post("/auth")
+def authentication(data: Token):
     try:
-        # Specify the CLIENT_ID of the app that accesses the backend:
-        user =id_token.verify_oauth2_token(token, requests.Request(), "116988534719-0j3baq1jkp64v4ghen352a283t6anvr0.apps.googleusercontent.com")
-
-        request.session['user'] = dict({
-            "email" : user["email"] 
-        })
-        
-        return user['name'] + ' Logged In successfully'
-
+        count = 0 
+        user_info = requests.get("https://www.googleapis.com/oauth2/v1/userinfo", headers={"Authorization": f"Bearer {data.access_token}"})
+        name = user_info.json()['name']
+        email = user_info.json()['email']
+        picture = user_info.json()['picture']
+        verified_email = user_info.json()['verified_email']
+        myuser = supabase.table("users").select("email, count").eq("email", email).single().execute()
+        if myuser.data['email'] == email:
+          count = int(myuser.data['count']) + 1
+          response = (supabase.table("users").update({"picture": picture, "count": count}).eq("email", email).execute())
+          return user_info.json()
+        else:
+            response = (supabase.table("users").insert({"name": name, "email": email, "picture": picture, "verified_email": verified_email, "count": count}).execute())
+            print(response)
+            return user_info.json()
+    except Exception as e:
+        return {"error": str(e)}
     except ValueError:
         return "unauthorized"
 
