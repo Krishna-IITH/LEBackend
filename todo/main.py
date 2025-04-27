@@ -176,7 +176,8 @@ def authentication(data: Token):
 
 @app.get('/')
 def check(request:Request):
-    return "hi "+ str(request.session.get('user')['email'])
+    # return "hi "+ str(request.session.get('user')['email'])
+    return "Hi! Welcome"
 
 # if __name__ == "__main__":
 #     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
