@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from . import schemas
+from .supabase_client import supabase
 
 SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 ALGORITHM = "HS256"
@@ -15,10 +16,16 @@ def create_access_token(data: dict):
 
 def verify_token(token:str,credentials_exception):
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        auth_token = (
+            supabase.table("users")
+            .select("auth_token").eq("token", token)
+            .execute()
+        )
+        print(auth_token)
+        payload = jwt.decode(auth_token.data["auth_token"], SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
-        token_data = schemas.TokenData(email=email)
+        return schemas.TokenData(email=email)
     except JWTError:
         raise credentials_exception

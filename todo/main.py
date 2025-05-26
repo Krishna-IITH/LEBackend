@@ -2,8 +2,9 @@ import os
 from fastapi import FastAPI
 from . import models
 from .database import engine
-from .routers import user, task, authentication, explainer
-from .schemas import Token
+from .routers import user, task, classes, authentication, explainer
+from .schemas import Token, MyClass
+from .token import create_access_token
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -13,7 +14,7 @@ import requests
 from fastapi.responses import FileResponse
 import uvicorn
 from typing import Optional
-
+from fastapi import HTTPException, status
 
 from google.oauth2 import id_token
 from google.auth.transport import requests as grequest
@@ -26,6 +27,7 @@ models.Base.metadata.create_all(engine)
 
 app.include_router(explainer.router)
 app.include_router(task.router)
+app.include_router(classes.router)
 app.include_router(user.router)
 app.include_router(authentication.router)
 
@@ -154,25 +156,56 @@ async def generate_talking_video(text: str = "hello! how are you? i am your new 
 @app.post("/auth")
 def authentication(data: Token):
     try:
-        count = 0 
+        count = 0
         user_info = requests.get("https://www.googleapis.com/oauth2/v1/userinfo", headers={"Authorization": f"Bearer {data.access_token}"})
         name = user_info.json()['name']
         email = user_info.json()['email']
         picture = user_info.json()['picture']
         verified_email = user_info.json()['verified_email']
-        myuser = supabase.table("users").select("email, count").eq("email", email).single().execute()
-        if myuser.data['email'] == email:
-          count = int(myuser.data['count']) + 1
-          response = (supabase.table("users").update({"picture": picture, "count": count}).eq("email", email).execute())
-          return user_info.json()
-        else:
-            response = (supabase.table("users").insert({"name": name, "email": email, "picture": picture, "verified_email": verified_email, "count": count}).execute())
-            print(response)
-            return user_info.json()
+        # print(email)
+        encoded_jwt = create_access_token({"sub": email})
+        print(encoded_jwt)
+        try:
+           myuser = supabase.table("users").select("email, count").eq("email", email).single().execute()
+           print(myuser)
+           if myuser.data['email'] == email:
+              count = int(myuser.data['count']) + 1
+              response = (supabase.table("users").update({"picture": picture, "count": count, "token": data.access_token, "auth_token": encoded_jwt}).eq("email", email).execute())
+        except:
+          response = (supabase.table("users").insert({"name": name, "email": email, "picture": picture, "verified_email": verified_email, "count": count,"token": data.access_token, "auth_token": encoded_jwt}).execute())
+        print(user_info.json())
+        return user_info.json()
     except Exception as e:
         return {"error": str(e)}
     except ValueError:
         return "unauthorized"
+
+
+# @app.post("/login/")
+# def login(data: Token):
+#     print(data)
+#     try:
+#         # Lookup user in Supabase via Google access_token
+#         user = supabase.table("users").select("email").eq("token", data.access_token).single().execute()
+#         if not user.data:
+#             raise HTTPException(status_code=403, detail="User not found, please /auth first")
+
+#         # Issue JWT
+#         jwt_token = create_access_token({"sub": user.data["email"]})
+
+#         # Save JWT for future token verification
+#         supabase.table("users").update({
+#             "auth_token": jwt_token
+#         }).eq("email", user.data["email"]).execute()
+
+#         return {
+#             "access_token": jwt_token,
+#             "token_type": "bearer"
+#         }
+
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get('/')
 def check(request:Request):

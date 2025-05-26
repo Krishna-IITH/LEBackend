@@ -1,6 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
-import enum
+from enum import Enum
 
 class User(BaseModel):
     name:str
@@ -12,6 +12,20 @@ class Task(BaseModel):
     title: str
     status: str
     priority: str
+
+
+class PriorityEnum(str, Enum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+
+
+class MyClass(BaseModel):
+    email: str
+    exam: str
+    subject: str
+    topic: str
+    progress_percentage: int = Field(ge=0, le=100, description="Progress between 0 and 100%")
 
 
 class showUser(BaseModel):
@@ -61,8 +75,8 @@ class Resources(BaseModel):
 
 class Explaination(BaseModel):
   topic: str
+  content: str
   explaination: str
-  simulation: str
   resources: Resources
 
 
